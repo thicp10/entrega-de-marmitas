@@ -26,4 +26,13 @@ public interface RetiradaRepository extends JpaRepository<Retirada, Long> {
     long countByClienteId(@Param("clienteId") Long clienteId);
     
     boolean existsByClienteIdAndDataRetiradaBetween(Long clienteId, LocalDateTime dataInicio, LocalDateTime dataFim);
+    
+    @Query("SELECT COUNT(r) > 0 FROM Retirada r WHERE r.cliente.rg = :rg AND r.dataRetirada BETWEEN :dataInicio AND :dataFim")
+    boolean existsByClienteRgAndDataRetiradaBetween(@Param("rg") String rg, @Param("dataInicio") LocalDateTime dataInicio, @Param("dataFim") LocalDateTime dataFim);
+    
+    @Query("SELECT COUNT(r) > 0 FROM Retirada r WHERE r.cliente.nome = :nome AND r.dataRetirada BETWEEN :dataInicio AND :dataFim")
+    boolean existsByClienteNomeAndDataRetiradaBetween(@Param("nome") String nome, @Param("dataInicio") LocalDateTime dataInicio, @Param("dataFim") LocalDateTime dataFim);
+    
+    @Query("SELECT COUNT(r) FROM Retirada r WHERE r.dataRetirada BETWEEN :dataInicio AND :dataFim")
+    long countByDataRetiradaBetween(@Param("dataInicio") LocalDateTime dataInicio, @Param("dataFim") LocalDateTime dataFim);
 }

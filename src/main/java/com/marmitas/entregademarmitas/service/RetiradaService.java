@@ -22,12 +22,30 @@ public class RetiradaService {
     @Autowired
     private ClienteRepository clienteRepository;
     
-    private void validarRetiradaNoMesmoDia(Long clienteId) {
+    private void validarRetiradaNoMesmoDiaPorClienteId(Long clienteId) {
         LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
         LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
         
         if (retiradaRepository.existsByClienteIdAndDataRetiradaBetween(clienteId, inicioDoDia, fimDoDia)) {
             throw new RuntimeException("Este cliente já retirou uma marmita hoje.");
+        }
+    }
+    
+    private void validarRetiradaNoMesmoDiaPorRg(String rg) {
+        LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+        LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+        
+        if (retiradaRepository.existsByClienteRgAndDataRetiradaBetween(rg, inicioDoDia, fimDoDia)) {
+            throw new RuntimeException("Pessoa com RG " + rg + " já retirou uma marmita hoje.");
+        }
+    }
+    
+    private void validarRetiradaNoMesmoDiaPorNome(String nome) {
+        LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
+        LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);
+        
+        if (retiradaRepository.existsByClienteNomeAndDataRetiradaBetween(nome, inicioDoDia, fimDoDia)) {
+            throw new RuntimeException("Pessoa com nome " + nome + " já retirou uma marmita hoje.");
         }
     }
     
@@ -37,7 +55,7 @@ public class RetiradaService {
             throw new RuntimeException("Cliente não encontrado com código: " + clienteId);
         }
         
-        validarRetiradaNoMesmoDia(clienteId);
+        validarRetiradaNoMesmoDiaPorClienteId(clienteId);
         
         Retirada retirada = new Retirada();
         retirada.setCliente(clienteOpt.get());
@@ -57,7 +75,7 @@ public class RetiradaService {
         }
         
         Cliente cliente = clientes.get(0);
-        validarRetiradaNoMesmoDia(cliente.getId());
+        validarRetiradaNoMesmoDiaPorNome(cliente.getNome());
         
         Retirada retirada = new Retirada();
         retirada.setCliente(cliente);
@@ -73,7 +91,7 @@ public class RetiradaService {
         }
         
         Cliente cliente = clienteOpt.get();
-        validarRetiradaNoMesmoDia(cliente.getId());
+        validarRetiradaNoMesmoDiaPorRg(rg);
         
         Retirada retirada = new Retirada();
         retirada.setCliente(cliente);
@@ -104,5 +122,9 @@ public class RetiradaService {
     
     public long countByClienteId(Long clienteId) {
         return retiradaRepository.countByClienteId(clienteId);
+    }
+    
+    public long countByDataRetiradaBetween(LocalDateTime dataInicio, LocalDateTime dataFim) {
+        return retiradaRepository.countByDataRetiradaBetween(dataInicio, dataFim);
     }
 }
