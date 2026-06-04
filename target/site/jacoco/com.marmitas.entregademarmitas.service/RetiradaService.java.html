@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RetiradaService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">entrega-de-marmitas</a> &gt; <a href="index.source.html" class="el_package">com.marmitas.entregademarmitas.service</a> &gt; <span class="el_source">RetiradaService.java</span></div><h1>RetiradaService.java</h1><pre class="source lang-java linenums">package com.marmitas.entregademarmitas.service;
+
+import com.marmitas.entregademarmitas.model.Cliente;
+import com.marmitas.entregademarmitas.model.Retirada;
+import com.marmitas.entregademarmitas.repository.ClienteRepository;
+import com.marmitas.entregademarmitas.repository.RetiradaRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+<span class="nc" id="L17">public class RetiradaService {</span>
+    
+    @Autowired
+    private RetiradaRepository retiradaRepository;
+    
+    @Autowired
+    private ClienteRepository clienteRepository;
+    
+    private void validarRetiradaNoMesmoDiaPorClienteId(Long clienteId) {
+<span class="nc" id="L26">        LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);</span>
+<span class="nc" id="L27">        LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);</span>
+        
+<span class="nc bnc" id="L29" title="All 2 branches missed.">        if (retiradaRepository.existsByClienteIdAndDataRetiradaBetween(clienteId, inicioDoDia, fimDoDia)) {</span>
+<span class="nc" id="L30">            throw new RuntimeException(&quot;Este cliente já retirou uma marmita hoje.&quot;);</span>
+        }
+<span class="nc" id="L32">    }</span>
+    
+    private void validarRetiradaNoMesmoDiaPorRg(String rg) {
+<span class="nc" id="L35">        LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);</span>
+<span class="nc" id="L36">        LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);</span>
+        
+<span class="nc bnc" id="L38" title="All 2 branches missed.">        if (retiradaRepository.existsByClienteRgAndDataRetiradaBetween(rg, inicioDoDia, fimDoDia)) {</span>
+<span class="nc" id="L39">            throw new RuntimeException(&quot;Pessoa com RG &quot; + rg + &quot; já retirou uma marmita hoje.&quot;);</span>
+        }
+<span class="nc" id="L41">    }</span>
+    
+    private void validarRetiradaNoMesmoDiaPorNome(String nome) {
+<span class="nc" id="L44">        LocalDateTime inicioDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);</span>
+<span class="nc" id="L45">        LocalDateTime fimDoDia = LocalDateTime.of(LocalDate.now(), LocalTime.MAX);</span>
+        
+<span class="nc bnc" id="L47" title="All 2 branches missed.">        if (retiradaRepository.existsByClienteNomeAndDataRetiradaBetween(nome, inicioDoDia, fimDoDia)) {</span>
+<span class="nc" id="L48">            throw new RuntimeException(&quot;Pessoa com nome &quot; + nome + &quot; já retirou uma marmita hoje.&quot;);</span>
+        }
+<span class="nc" id="L50">    }</span>
+    
+    public Retirada registrarRetiradaPorCodigo(Long clienteId) {
+<span class="nc" id="L53">        Optional&lt;Cliente&gt; clienteOpt = clienteRepository.findById(clienteId);</span>
+<span class="nc bnc" id="L54" title="All 2 branches missed.">        if (clienteOpt.isEmpty()) {</span>
+<span class="nc" id="L55">            throw new RuntimeException(&quot;Cliente não encontrado com código: &quot; + clienteId);</span>
+        }
+        
+<span class="nc" id="L58">        validarRetiradaNoMesmoDiaPorClienteId(clienteId);</span>
+        
+<span class="nc" id="L60">        Retirada retirada = new Retirada();</span>
+<span class="nc" id="L61">        retirada.setCliente(clienteOpt.get());</span>
+<span class="nc" id="L62">        retirada.setDataRetirada(LocalDateTime.now());</span>
+        
+<span class="nc" id="L64">        return retiradaRepository.save(retirada);</span>
+    }
+    
+    public Retirada registrarRetiradaPorNome(String nomeCompleto) {
+<span class="nc" id="L68">        List&lt;Cliente&gt; clientes = clienteRepository.findByNomeContainingIgnoreCase(nomeCompleto);</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">        if (clientes.isEmpty()) {</span>
+<span class="nc" id="L70">            throw new RuntimeException(&quot;Nenhum cliente encontrado com o nome: &quot; + nomeCompleto);</span>
+        }
+        
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (clientes.size() &gt; 1) {</span>
+<span class="nc" id="L74">            throw new RuntimeException(&quot;Múltiplos clientes encontrados com o nome: &quot; + nomeCompleto + &quot;. Por favor, especifique o nome completo ou use o código do cliente.&quot;);</span>
+        }
+        
+<span class="nc" id="L77">        Cliente cliente = clientes.get(0);</span>
+<span class="nc" id="L78">        validarRetiradaNoMesmoDiaPorNome(cliente.getNome());</span>
+        
+<span class="nc" id="L80">        Retirada retirada = new Retirada();</span>
+<span class="nc" id="L81">        retirada.setCliente(cliente);</span>
+<span class="nc" id="L82">        retirada.setDataRetirada(LocalDateTime.now());</span>
+        
+<span class="nc" id="L84">        return retiradaRepository.save(retirada);</span>
+    }
+    
+    public Retirada registrarRetiradaPorRg(String rg) {
+<span class="nc" id="L88">        Optional&lt;Cliente&gt; clienteOpt = clienteRepository.findByRg(rg);</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (clienteOpt.isEmpty()) {</span>
+<span class="nc" id="L90">            throw new RuntimeException(&quot;Cliente não encontrado com RG: &quot; + rg);</span>
+        }
+        
+<span class="nc" id="L93">        Cliente cliente = clienteOpt.get();</span>
+<span class="nc" id="L94">        validarRetiradaNoMesmoDiaPorRg(rg);</span>
+        
+<span class="nc" id="L96">        Retirada retirada = new Retirada();</span>
+<span class="nc" id="L97">        retirada.setCliente(cliente);</span>
+<span class="nc" id="L98">        retirada.setDataRetirada(LocalDateTime.now());</span>
+        
+<span class="nc" id="L100">        return retiradaRepository.save(retirada);</span>
+    }
+    
+    public List&lt;Retirada&gt; findAll() {
+<span class="nc" id="L104">        return retiradaRepository.findAll();</span>
+    }
+    
+    public List&lt;Retirada&gt; findByClienteId(Long clienteId) {
+<span class="nc" id="L108">        return retiradaRepository.findByClienteId(clienteId);</span>
+    }
+    
+    public List&lt;Retirada&gt; findByDataRetiradaBetween(LocalDateTime dataInicio, LocalDateTime dataFim) {
+<span class="nc" id="L112">        return retiradaRepository.findByDataRetiradaBetween(dataInicio, dataFim);</span>
+    }
+    
+    public List&lt;Retirada&gt; findByClienteNomeContaining(String nome) {
+<span class="nc" id="L116">        return retiradaRepository.findByClienteNomeContaining(nome);</span>
+    }
+    
+    public long count() {
+<span class="nc" id="L120">        return retiradaRepository.count();</span>
+    }
+    
+    public long countByClienteId(Long clienteId) {
+<span class="nc" id="L124">        return retiradaRepository.countByClienteId(clienteId);</span>
+    }
+    
+    public long countByDataRetiradaBetween(LocalDateTime dataInicio, LocalDateTime dataFim) {
+<span class="nc" id="L128">        return retiradaRepository.countByDataRetiradaBetween(dataInicio, dataFim);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

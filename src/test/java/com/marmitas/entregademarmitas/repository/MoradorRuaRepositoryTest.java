@@ -241,4 +241,37 @@ class MoradorRuaRepositoryTest {
         
         assertEquals(3, todos.size());
     }
+
+    @Test
+    @DisplayName("Deve contar moradores por período de data de retirada")
+    void testCountByDataRetiradaBetween() {
+        LocalDateTime inicio = LocalDateTime.now().minusHours(2);
+        LocalDateTime fim = LocalDateTime.now().plusHours(2);
+        
+        long total = moradorRuaRepository.countByDataRetiradaBetween(inicio, fim);
+        
+        assertEquals(2, total);
+    }
+
+    @Test
+    @DisplayName("Deve contar zero quando período não contém retiradas")
+    void testCountByDataRetiradaBetweenZero() {
+        LocalDateTime inicio = LocalDateTime.now().minusDays(2);
+        LocalDateTime fim = LocalDateTime.now().minusDays(1).minusHours(1);
+        
+        long total = moradorRuaRepository.countByDataRetiradaBetween(inicio, fim);
+        
+        assertEquals(0, total);
+    }
+
+    @Test
+    @DisplayName("Deve contar moradores no período de um dia específico")
+    void testCountByDataRetiradaBetweenDiaEspecifico() {
+        LocalDateTime inicio = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime fim = LocalDateTime.now().withHour(23).withMinute(59).withSecond(59).withNano(999999999);
+        
+        long total = moradorRuaRepository.countByDataRetiradaBetween(inicio, fim);
+        
+        assertEquals(2, total);
+    }
 }

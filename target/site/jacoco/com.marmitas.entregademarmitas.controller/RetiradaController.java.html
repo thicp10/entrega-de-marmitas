@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RetiradaController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">entrega-de-marmitas</a> &gt; <a href="index.source.html" class="el_package">com.marmitas.entregademarmitas.controller</a> &gt; <span class="el_source">RetiradaController.java</span></div><h1>RetiradaController.java</h1><pre class="source lang-java linenums">package com.marmitas.entregademarmitas.controller;
+
+import com.marmitas.entregademarmitas.model.Retirada;
+import com.marmitas.entregademarmitas.model.MoradorRua;
+import com.marmitas.entregademarmitas.service.ExcelExportService;
+import com.marmitas.entregademarmitas.service.RetiradaService;
+import com.marmitas.entregademarmitas.service.MoradorRuaService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping(&quot;/api/retiradas&quot;)
+<span class="fc" id="L25">public class RetiradaController {</span>
+    
+    @Autowired
+    private RetiradaService retiradaService;
+    
+    @Autowired
+    private MoradorRuaService moradorRuaService;
+    
+    @Autowired
+    private ExcelExportService excelExportService;
+    
+    @PostMapping(&quot;/registrar&quot;)
+    public ResponseEntity&lt;?&gt; registrarRetirada(@RequestBody Map&lt;String, String&gt; request) {
+        try {
+<span class="fc" id="L39">            String codigo = request.get(&quot;codigo&quot;);</span>
+<span class="fc" id="L40">            String nome = request.get(&quot;nome&quot;);</span>
+<span class="fc" id="L41">            String rg = request.get(&quot;rg&quot;);</span>
+<span class="fc" id="L42">            String moradorRua = request.get(&quot;moradorRua&quot;);</span>
+            
+            // Verificar se é retirada de morador de rua
+<span class="fc bfc" id="L45" title="All 2 branches covered.">            if (&quot;true&quot;.equalsIgnoreCase(moradorRua)) {</span>
+<span class="fc" id="L46">                return registrarRetiradaMoradorRua(request);</span>
+            }
+            
+            Retirada retirada;
+            
+<span class="pc bpc" id="L51" title="1 of 4 branches missed.">            if (codigo != null &amp;&amp; !codigo.trim().isEmpty()) {</span>
+<span class="fc" id="L52">                Long clienteId = Long.parseLong(codigo.trim());</span>
+<span class="fc" id="L53">                retirada = retiradaService.registrarRetiradaPorCodigo(clienteId);</span>
+<span class="pc bpc" id="L54" title="1 of 4 branches missed.">            } else if (nome != null &amp;&amp; !nome.trim().isEmpty()) {</span>
+<span class="fc" id="L55">                retirada = retiradaService.registrarRetiradaPorNome(nome.trim());</span>
+<span class="pc bpc" id="L56" title="1 of 4 branches missed.">            } else if (rg != null &amp;&amp; !rg.trim().isEmpty()) {</span>
+<span class="fc" id="L57">                retirada = retiradaService.registrarRetiradaPorRg(rg.trim());</span>
+            } else {
+<span class="fc" id="L59">                Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L60">                error.put(&quot;erro&quot;, &quot;É necessário fornecer código, nome completo ou RG do cliente&quot;);</span>
+<span class="fc" id="L61">                return ResponseEntity.badRequest().body(error);</span>
+            }
+            
+<span class="fc" id="L64">            Map&lt;String, Object&gt; response = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L65">            response.put(&quot;mensagem&quot;, &quot;Retirada registrada com sucesso&quot;);</span>
+<span class="fc" id="L66">            response.put(&quot;id_retirada&quot;, retirada.getId());</span>
+<span class="fc" id="L67">            response.put(&quot;nome_cliente&quot;, retirada.getCliente().getNome());</span>
+<span class="fc" id="L68">            response.put(&quot;codigo_cliente&quot;, retirada.getCliente().getId());</span>
+<span class="fc" id="L69">            response.put(&quot;data_retirada&quot;, retirada.getDataRetirada());</span>
+            
+<span class="fc" id="L71">            return ResponseEntity.ok(response);</span>
+            
+<span class="fc" id="L73">        } catch (NumberFormatException e) {</span>
+<span class="fc" id="L74">            Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L75">            error.put(&quot;erro&quot;, &quot;Código do cliente deve ser um número válido&quot;);</span>
+<span class="fc" id="L76">            return ResponseEntity.badRequest().body(error);</span>
+<span class="fc" id="L77">        } catch (RuntimeException e) {</span>
+<span class="fc" id="L78">            Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L79">            error.put(&quot;erro&quot;, e.getMessage());</span>
+<span class="fc" id="L80">            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);</span>
+<span class="nc" id="L81">        } catch (Exception e) {</span>
+<span class="nc" id="L82">            Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L83">            error.put(&quot;erro&quot;, &quot;Erro ao registrar retirada: &quot; + e.getMessage());</span>
+<span class="nc" id="L84">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);</span>
+        }
+    }
+    
+    private ResponseEntity&lt;?&gt; registrarRetiradaMoradorRua(Map&lt;String, String&gt; request) {
+        try {
+<span class="fc" id="L90">            String nome = request.get(&quot;nome&quot;);</span>
+<span class="fc" id="L91">            String rg = request.get(&quot;rg&quot;);</span>
+<span class="fc" id="L92">            String descricao = request.get(&quot;descricao&quot;);</span>
+            
+<span class="pc bpc" id="L94" title="1 of 4 branches missed.">            if (nome == null || nome.trim().isEmpty()) {</span>
+<span class="fc" id="L95">                Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L96">                error.put(&quot;erro&quot;, &quot;Nome do morador de rua é obrigatório&quot;);</span>
+<span class="fc" id="L97">                return ResponseEntity.badRequest().body(error);</span>
+            }
+            
+<span class="fc" id="L100">            MoradorRua moradorRua = moradorRuaService.registrarRetirada(nome.trim(), rg, descricao);</span>
+            
+<span class="fc" id="L102">            Map&lt;String, Object&gt; response = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L103">            response.put(&quot;mensagem&quot;, &quot;Retirada de morador de rua registrada com sucesso&quot;);</span>
+<span class="fc" id="L104">            response.put(&quot;id_morador&quot;, moradorRua.getId());</span>
+<span class="fc" id="L105">            response.put(&quot;nome_morador&quot;, moradorRua.getNome());</span>
+<span class="fc" id="L106">            response.put(&quot;data_retirada&quot;, moradorRua.getDataRetirada());</span>
+            
+<span class="fc" id="L108">            return ResponseEntity.ok(response);</span>
+            
+<span class="nc" id="L110">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L111">            Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L112">            error.put(&quot;erro&quot;, e.getMessage());</span>
+<span class="nc" id="L113">            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+<span class="nc" id="L114">        } catch (Exception e) {</span>
+<span class="nc" id="L115">            Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L116">            error.put(&quot;erro&quot;, &quot;Erro ao registrar retirada de morador de rua: &quot; + e.getMessage());</span>
+<span class="nc" id="L117">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);</span>
+        }
+    }
+    
+    @GetMapping
+    public ResponseEntity&lt;List&lt;Retirada&gt;&gt; listarTodasRetiradas() {
+<span class="fc" id="L123">        List&lt;Retirada&gt; retiradas = retiradaService.findAll();</span>
+<span class="fc" id="L124">        return ResponseEntity.ok(retiradas);</span>
+    }
+    
+    @GetMapping(&quot;/cliente/{clienteId}&quot;)
+    public ResponseEntity&lt;List&lt;Retirada&gt;&gt; listarRetiradasPorCliente(@PathVariable Long clienteId) {
+<span class="fc" id="L129">        List&lt;Retirada&gt; retiradas = retiradaService.findByClienteId(clienteId);</span>
+<span class="fc" id="L130">        return ResponseEntity.ok(retiradas);</span>
+    }
+    
+    @GetMapping(&quot;/periodo&quot;)
+    public ResponseEntity&lt;List&lt;Retirada&gt;&gt; listarRetiradasPorPeriodo(
+            @RequestParam(&quot;dataInicio&quot;) String dataInicio,
+            @RequestParam(&quot;dataFim&quot;) String dataFim) {
+        
+<span class="fc" id="L138">        LocalDateTime inicio = LocalDateTime.parse(dataInicio);</span>
+<span class="fc" id="L139">        LocalDateTime fim = LocalDateTime.parse(dataFim);</span>
+        
+<span class="fc" id="L141">        List&lt;Retirada&gt; retiradas = retiradaService.findByDataRetiradaBetween(inicio, fim);</span>
+<span class="fc" id="L142">        return ResponseEntity.ok(retiradas);</span>
+    }
+    
+    @GetMapping(&quot;/moradores-rua&quot;)
+    public ResponseEntity&lt;List&lt;MoradorRua&gt;&gt; listarTodasRetiradasMoradorRua() {
+<span class="fc" id="L147">        List&lt;MoradorRua&gt; moradores = moradorRuaService.findAll();</span>
+<span class="fc" id="L148">        return ResponseEntity.ok(moradores);</span>
+    }
+    
+    @GetMapping(&quot;/moradores-rua/buscar/nome&quot;)
+    public ResponseEntity&lt;List&lt;MoradorRua&gt;&gt; listarMoradoresRuaPorNome(@RequestParam String nome) {
+<span class="fc" id="L153">        List&lt;MoradorRua&gt; moradores = moradorRuaService.findByNomeContaining(nome);</span>
+<span class="fc" id="L154">        return ResponseEntity.ok(moradores);</span>
+    }
+    
+    @GetMapping(&quot;/moradores-rua/periodo&quot;)
+    public ResponseEntity&lt;List&lt;MoradorRua&gt;&gt; listarRetiradasMoradorRuaPorPeriodo(
+            @RequestParam(&quot;dataInicio&quot;) String dataInicio,
+            @RequestParam(&quot;dataFim&quot;) String dataFim) {
+        
+<span class="fc" id="L162">        LocalDateTime inicio = LocalDateTime.parse(dataInicio);</span>
+<span class="fc" id="L163">        LocalDateTime fim = LocalDateTime.parse(dataFim);</span>
+        
+<span class="fc" id="L165">        List&lt;MoradorRua&gt; moradores = moradorRuaService.findByDataRetiradaBetween(inicio, fim);</span>
+<span class="fc" id="L166">        return ResponseEntity.ok(moradores);</span>
+    }
+    
+    @GetMapping(&quot;/total&quot;)
+    public ResponseEntity&lt;Map&lt;String, Long&gt;&gt; estatisticas() {
+<span class="fc" id="L171">        Map&lt;String, Long&gt; stats = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L172">        stats.put(&quot;total_retiradas&quot;, retiradaService.count());</span>
+<span class="fc" id="L173">        stats.put(&quot;total_moradores_rua&quot;, moradorRuaService.count());</span>
+<span class="fc" id="L174">        return ResponseEntity.ok(stats);</span>
+    }
+    
+    @GetMapping(&quot;/exportar/excel&quot;)
+    public ResponseEntity&lt;byte[]&gt; exportarRetiradasExcel(
+            @RequestParam(value = &quot;dataInicio&quot;, required = false) String dataInicio,
+            @RequestParam(value = &quot;dataFim&quot;, required = false) String dataFim) {
+        try {
+            List&lt;Retirada&gt; retiradas;
+            
+<span class="pc bpc" id="L184" title="1 of 4 branches missed.">            if (dataInicio != null &amp;&amp; dataFim != null) {</span>
+<span class="fc" id="L185">                LocalDateTime inicio = LocalDateTime.parse(dataInicio);</span>
+<span class="fc" id="L186">                LocalDateTime fim = LocalDateTime.parse(dataFim);</span>
+<span class="fc" id="L187">                retiradas = retiradaService.findByDataRetiradaBetween(inicio, fim);</span>
+<span class="fc" id="L188">            } else {</span>
+<span class="fc" id="L189">                retiradas = retiradaService.findAll();</span>
+            }
+            
+<span class="fc" id="L192">            byte[] excelContent = excelExportService.exportRetiradasToExcel(retiradas);</span>
+            
+            String filename = &quot;retiradas_marmitas_&quot; + 
+<span class="fc" id="L195">                LocalDateTime.now().format(DateTimeFormatter.ofPattern(&quot;yyyyMMdd_HHmmss&quot;)) + </span>
+                &quot;.xlsx&quot;;
+            
+<span class="fc" id="L198">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="fc" id="L199">            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);</span>
+<span class="fc" id="L200">            headers.setContentDispositionFormData(&quot;attachment&quot;, filename);</span>
+<span class="fc" id="L201">            headers.setContentLength(excelContent.length);</span>
+            
+<span class="fc" id="L203">            return ResponseEntity.ok()</span>
+<span class="fc" id="L204">                    .headers(headers)</span>
+<span class="fc" id="L205">                    .body(excelContent);</span>
+                    
+<span class="fc" id="L207">        } catch (Exception e) {</span>
+<span class="fc" id="L208">            Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L209">            error.put(&quot;erro&quot;, &quot;Erro ao gerar arquivo Excel: &quot; + e.getMessage());</span>
+<span class="fc" id="L210">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="fc" id="L211">                    .body(null);</span>
+        }
+    }
+    
+    @GetMapping(&quot;/relatorio-diario&quot;)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; relatorioDiario(@RequestParam(required = false) String data) {
+        try {
+            LocalDate dataRelatorio;
+<span class="pc bpc" id="L219" title="1 of 4 branches missed.">            if (data != null &amp;&amp; !data.trim().isEmpty()) {</span>
+<span class="fc" id="L220">                dataRelatorio = LocalDate.parse(data);</span>
+            } else {
+<span class="fc" id="L222">                dataRelatorio = LocalDate.now();</span>
+            }
+            
+<span class="fc" id="L225">            LocalDateTime inicioDoDia = LocalDateTime.of(dataRelatorio, LocalTime.MIN);</span>
+<span class="fc" id="L226">            LocalDateTime fimDoDia = LocalDateTime.of(dataRelatorio, LocalTime.MAX);</span>
+            
+<span class="fc" id="L228">            long totalClientes = retiradaService.countByDataRetiradaBetween(inicioDoDia, fimDoDia);</span>
+<span class="fc" id="L229">            long totalMoradoresRua = moradorRuaService.countByDataRetiradaBetween(inicioDoDia, fimDoDia);</span>
+<span class="fc" id="L230">            long totalGeral = totalClientes + totalMoradoresRua;</span>
+            
+<span class="fc" id="L232">            Map&lt;String, Object&gt; response = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L233">            response.put(&quot;data&quot;, dataRelatorio.format(DateTimeFormatter.ofPattern(&quot;dd/MM/yyyy&quot;)));</span>
+<span class="fc" id="L234">            response.put(&quot;total_clientes&quot;, totalClientes);</span>
+<span class="fc" id="L235">            response.put(&quot;total_moradores_rua&quot;, totalMoradoresRua);</span>
+<span class="fc" id="L236">            response.put(&quot;total_geral&quot;, totalGeral);</span>
+            
+<span class="fc" id="L238">            return ResponseEntity.ok(response);</span>
+            
+<span class="fc" id="L240">        } catch (Exception e) {</span>
+<span class="fc" id="L241">            Map&lt;String, Object&gt; error = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L242">            error.put(&quot;erro&quot;, &quot;Erro ao gerar relatório diário: &quot; + e.getMessage());</span>
+<span class="fc" id="L243">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);</span>
+        }
+    }
+    
+    @GetMapping(&quot;/exportar/relatorio-diario/excel&quot;)
+    public ResponseEntity&lt;byte[]&gt; exportarRelatorioDiarioExcel(@RequestParam(required = false) String data) {
+        try {
+            LocalDate dataRelatorio;
+<span class="pc bpc" id="L251" title="1 of 4 branches missed.">            if (data != null &amp;&amp; !data.trim().isEmpty()) {</span>
+<span class="fc" id="L252">                dataRelatorio = LocalDate.parse(data);</span>
+            } else {
+<span class="fc" id="L254">                dataRelatorio = LocalDate.now();</span>
+            }
+            
+<span class="fc" id="L257">            LocalDateTime inicioDoDia = LocalDateTime.of(dataRelatorio, LocalTime.MIN);</span>
+<span class="fc" id="L258">            LocalDateTime fimDoDia = LocalDateTime.of(dataRelatorio, LocalTime.MAX);</span>
+            
+<span class="fc" id="L260">            List&lt;Retirada&gt; retiradas = retiradaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia);</span>
+<span class="fc" id="L261">            List&lt;MoradorRua&gt; moradoresRua = moradorRuaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia);</span>
+            
+<span class="fc" id="L263">            byte[] excelContent = excelExportService.exportRelatorioDiarioToExcel(retiradas, moradoresRua, dataRelatorio);</span>
+            
+<span class="fc" id="L265">            String filename = &quot;relatorio_diario_marmitas_&quot; + </span>
+<span class="fc" id="L266">                dataRelatorio.format(DateTimeFormatter.ofPattern(&quot;yyyyMMdd&quot;)) + </span>
+                &quot;.xlsx&quot;;
+            
+<span class="fc" id="L269">            HttpHeaders headers = new HttpHeaders();</span>
+<span class="fc" id="L270">            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);</span>
+<span class="fc" id="L271">            headers.setContentDispositionFormData(&quot;attachment&quot;, filename);</span>
+<span class="fc" id="L272">            headers.setContentLength(excelContent.length);</span>
+            
+<span class="fc" id="L274">            return ResponseEntity.ok()</span>
+<span class="fc" id="L275">                    .headers(headers)</span>
+<span class="fc" id="L276">                    .body(excelContent);</span>
+                    
+<span class="fc" id="L278">        } catch (Exception e) {</span>
+<span class="fc" id="L279">            Map&lt;String, String&gt; error = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L280">            error.put(&quot;erro&quot;, &quot;Erro ao gerar arquivo Excel do relatório diário: &quot; + e.getMessage());</span>
+<span class="fc" id="L281">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="fc" id="L282">                    .body(null);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>

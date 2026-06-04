@@ -63,7 +63,11 @@ class MoradorRuaServiceTest {
     void testRegistrarRetiradaSemRg() {
         when(moradorRuaRepository.existsByNomeAndDataRetiradaBetween(anyString(), any(), any()))
             .thenReturn(false);
-        when(moradorRuaRepository.save(any(MoradorRua.class))).thenReturn(moradorRua);
+        when(moradorRuaRepository.save(any(MoradorRua.class))).thenAnswer(invocation -> {
+            MoradorRua saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
 
         MoradorRua resultado = moradorRuaService.registrarRetirada(
             "João Silva", null, "Descrição teste");
@@ -81,7 +85,11 @@ class MoradorRuaServiceTest {
     void testRegistrarRetiradaComRgVazio() {
         when(moradorRuaRepository.existsByNomeAndDataRetiradaBetween(anyString(), any(), any()))
             .thenReturn(false);
-        when(moradorRuaRepository.save(any(MoradorRua.class))).thenReturn(moradorRua);
+        when(moradorRuaRepository.save(any(MoradorRua.class))).thenAnswer(invocation -> {
+            MoradorRua saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
 
         MoradorRua resultado = moradorRuaService.registrarRetirada(
             "João Silva", "", "Descrição teste");
@@ -254,8 +262,38 @@ class MoradorRuaServiceTest {
 
         MoradorRua resultado = moradorRuaService.registrarRetirada("João Silva", "123456789", "");
 
-        verify(moradorRuaRepository).save(argThat(morador -> 
+        verify(moradorRuaRepository).save(argThat(morador ->
             morador.getDescricao().equals("")
         ));
+    }
+
+    @Test
+    @DisplayName("Deve contar moradores por período de data de retirada")
+    void testCountByDataRetiradaBetween() {
+        LocalDateTime dataInicio = LocalDateTime.now().minusDays(1);
+        LocalDateTime dataFim = LocalDateTime.now().plusDays(1);
+
+        when(moradorRuaRepository.countByDataRetiradaBetween(dataInicio, dataFim))
+            .thenReturn(5L);
+
+        long resultado = moradorRuaService.countByDataRetiradaBetween(dataInicio, dataFim);
+
+        assertEquals(5L, resultado);
+        verify(moradorRuaRepository).countByDataRetiradaBetween(dataInicio, dataFim);
+    }
+
+    @Test
+    @DisplayName("Deve contar zero quando não há moradores no período")
+    void testCountByDataRetiradaBetweenZero() {
+        LocalDateTime dataInicio = LocalDateTime.now().minusDays(10);
+        LocalDateTime dataFim = LocalDateTime.now().minusDays(5);
+
+        when(moradorRuaRepository.countByDataRetiradaBetween(dataInicio, dataFim))
+            .thenReturn(0L);
+
+        long resultado = moradorRuaService.countByDataRetiradaBetween(dataInicio, dataFim);
+
+        assertEquals(0L, resultado);
+        verify(moradorRuaRepository).countByDataRetiradaBetween(dataInicio, dataFim);
     }
 }

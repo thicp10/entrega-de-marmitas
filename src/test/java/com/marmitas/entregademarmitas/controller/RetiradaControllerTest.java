@@ -1,6 +1,7 @@
 package com.marmitas.entregademarmitas.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.marmitas.entregademarmitas.model.Cliente;
 import com.marmitas.entregademarmitas.model.MoradorRua;
 import com.marmitas.entregademarmitas.model.Retirada;
 import com.marmitas.entregademarmitas.service.ExcelExportService;
@@ -10,12 +11,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +32,15 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(RetiradaController.class)
+@WebMvcTest(controllers = RetiradaController.class,
+    excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = {
+            com.marmitas.entregademarmitas.security.JwtAuthenticationFilter.class,
+            com.marmitas.entregademarmitas.security.SecurityConfig.class
+        }
+    ))
+@AutoConfigureMockMvc(addFilters = false)
 class RetiradaControllerTest {
 
     @Autowired
@@ -51,8 +65,15 @@ class RetiradaControllerTest {
     void setUp() {
         LocalDateTime agora = LocalDateTime.now();
         
+        Cliente cliente = new Cliente();
+        cliente.setId(1L);
+        cliente.setNome("João Silva");
+        cliente.setEndereco("Rua Teste, 123");
+        cliente.setRg("123456789");
+        
         retirada = new Retirada();
         retirada.setId(1L);
+        retirada.setCliente(cliente);
         retirada.setDataRetirada(agora);
         
         moradorRua = new MoradorRua();
@@ -356,7 +377,126 @@ class RetiradaControllerTest {
             .thenThrow(new RuntimeException("Erro ao gerar Excel"));
 
         mockMvc.perform(get("/api/retiradas/exportar/excel"))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    @DisplayName("Deve retornar relatório diário com data atual quando não informada")
+    void testRelatorioDiarioDataAtual() throws Exception {
+        LocalDate hoje = LocalDate.now();
+        LocalDateTime inicioDoDia = LocalDateTime.of(hoje, LocalTime.MIN);
+        LocalDateTime fimDoDia = LocalDateTime.of(hoje, LocalTime.MAX);
+
+        when(retiradaService.countByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(10L);
+        when(moradorRuaService.countByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(5L);
+
+        mockMvc.perform(get("/api/retiradas/relatorio-diario"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").exists())
+                .andExpect(jsonPath("$.total_clientes").value(10))
+                .andExpect(jsonPath("$.total_moradores_rua").value(5))
+                .andExpect(jsonPath("$.total_geral").value(15));
+
+        verify(retiradaService).countByDataRetiradaBetween(inicioDoDia, fimDoDia);
+        verify(moradorRuaService).countByDataRetiradaBetween(inicioDoDia, fimDoDia);
+    }
+
+    @Test
+    @DisplayName("Deve retornar relatório diário com data informada")
+    void testRelatorioDiarioDataInformada() throws Exception {
+        LocalDate dataInformada = LocalDate.of(2023, 6, 4);
+        LocalDateTime inicioDoDia = LocalDateTime.of(dataInformada, LocalTime.MIN);
+        LocalDateTime fimDoDia = LocalDateTime.of(dataInformada, LocalTime.MAX);
+
+        when(retiradaService.countByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(8L);
+        when(moradorRuaService.countByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(3L);
+
+        mockMvc.perform(get("/api/retiradas/relatorio-diario")
+                .param("data", "2023-06-04"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("04/06/2023"))
+                .andExpect(jsonPath("$.total_clientes").value(8))
+                .andExpect(jsonPath("$.total_moradores_rua").value(3))
+                .andExpect(jsonPath("$.total_geral").value(11));
+
+        verify(retiradaService).countByDataRetiradaBetween(inicioDoDia, fimDoDia);
+        verify(moradorRuaService).countByDataRetiradaBetween(inicioDoDia, fimDoDia);
+    }
+
+    @Test
+    @DisplayName("Deve retornar erro ao gerar relatório diário quando ocorre exceção")
+    void testRelatorioDiarioErro() throws Exception {
+        when(retiradaService.countByDataRetiradaBetween(any(), any()))
+            .thenThrow(new RuntimeException("Erro ao contar retiradas"));
+
+        mockMvc.perform(get("/api/retiradas/relatorio-diario"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.erro").value("Erro ao gerar arquivo Excel: Erro ao gerar Excel"));
+                .andExpect(jsonPath("$.erro").value("Erro ao gerar relatório diário: Erro ao contar retiradas"));
+    }
+
+    @Test
+    @DisplayName("Deve exportar relatório diário para Excel com data atual")
+    void testExportarRelatorioDiarioExcelDataAtual() throws Exception {
+        LocalDate hoje = LocalDate.now();
+        LocalDateTime inicioDoDia = LocalDateTime.of(hoje, LocalTime.MIN);
+        LocalDateTime fimDoDia = LocalDateTime.of(hoje, LocalTime.MAX);
+
+        List<Retirada> retiradas = Arrays.asList(retirada);
+        List<MoradorRua> moradoresRua = Arrays.asList(moradorRua);
+
+        when(retiradaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(retiradas);
+        when(moradorRuaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(moradoresRua);
+        when(excelExportService.exportRelatorioDiarioToExcel(retiradas, moradoresRua, hoje))
+            .thenReturn(new byte[0]);
+
+        mockMvc.perform(get("/api/retiradas/exportar/relatorio-diario/excel"))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("Content-Disposition"))
+                .andExpect(header().string("Content-Type", "application/octet-stream"));
+
+        verify(retiradaService).findByDataRetiradaBetween(inicioDoDia, fimDoDia);
+        verify(moradorRuaService).findByDataRetiradaBetween(inicioDoDia, fimDoDia);
+        verify(excelExportService).exportRelatorioDiarioToExcel(retiradas, moradoresRua, hoje);
+    }
+
+    @Test
+    @DisplayName("Deve exportar relatório diário para Excel com data informada")
+    void testExportarRelatorioDiarioExcelDataInformada() throws Exception {
+        LocalDate dataInformada = LocalDate.of(2023, 6, 4);
+        LocalDateTime inicioDoDia = LocalDateTime.of(dataInformada, LocalTime.MIN);
+        LocalDateTime fimDoDia = LocalDateTime.of(dataInformada, LocalTime.MAX);
+
+        List<Retirada> retiradas = Arrays.asList(retirada);
+        List<MoradorRua> moradoresRua = Arrays.asList(moradorRua);
+
+        when(retiradaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(retiradas);
+        when(moradorRuaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(moradoresRua);
+        when(excelExportService.exportRelatorioDiarioToExcel(retiradas, moradoresRua, dataInformada))
+            .thenReturn(new byte[0]);
+
+        mockMvc.perform(get("/api/retiradas/exportar/relatorio-diario/excel")
+                .param("data", "2023-06-04"))
+                .andExpect(status().isOk())
+                .andExpect(header().exists("Content-Disposition"));
+
+        verify(retiradaService).findByDataRetiradaBetween(inicioDoDia, fimDoDia);
+        verify(moradorRuaService).findByDataRetiradaBetween(inicioDoDia, fimDoDia);
+        verify(excelExportService).exportRelatorioDiarioToExcel(retiradas, moradoresRua, dataInformada);
+    }
+
+    @Test
+    @DisplayName("Deve retornar erro ao exportar relatório diário Excel quando ocorre exceção")
+    void testExportarRelatorioDiarioExcelErro() throws Exception {
+        LocalDate hoje = LocalDate.now();
+        LocalDateTime inicioDoDia = LocalDateTime.of(hoje, LocalTime.MIN);
+        LocalDateTime fimDoDia = LocalDateTime.of(hoje, LocalTime.MAX);
+
+        when(retiradaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(Arrays.asList(retirada));
+        when(moradorRuaService.findByDataRetiradaBetween(inicioDoDia, fimDoDia)).thenReturn(Arrays.asList(moradorRua));
+        when(excelExportService.exportRelatorioDiarioToExcel(any(), any(), any()))
+            .thenThrow(new RuntimeException("Erro ao gerar Excel"));
+
+        mockMvc.perform(get("/api/retiradas/exportar/relatorio-diario/excel"))
+                .andExpect(status().isInternalServerError());
     }
 }

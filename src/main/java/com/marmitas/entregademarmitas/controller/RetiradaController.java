@@ -238,7 +238,7 @@ public class RetiradaController {
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            Map<String, String> error = new HashMap<>();
+            Map<String, Object> error = new HashMap<>();
             error.put("erro", "Erro ao gerar relatório diário: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
