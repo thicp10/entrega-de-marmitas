@@ -13,7 +13,7 @@ public class Retirada {
     private Long id;
     
     @NotNull(message = "Cliente é obrigatório")
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "cliente_id", nullable = false)
     private Cliente cliente;
     
