@@ -3,6 +3,7 @@ package com.marmitas.entregademarmitas.controller;
 import com.marmitas.entregademarmitas.model.Retirada;
 import com.marmitas.entregademarmitas.model.MoradorRua;
 import com.marmitas.entregademarmitas.service.ExcelExportService;
+import com.marmitas.entregademarmitas.service.ProducaoDiariaService;
 import com.marmitas.entregademarmitas.service.RetiradaService;
 import com.marmitas.entregademarmitas.service.MoradorRuaService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,14 @@ public class RetiradaController {
     @Autowired
     private ExcelExportService excelExportService;
     
+    @Autowired
+    private ProducaoDiariaService producaoDiariaService;
+    
     @PostMapping("/registrar")
     public ResponseEntity<?> registrarRetirada(@RequestBody Map<String, String> request) {
         try {
+            producaoDiariaService.validarSaldoDisponivel();
+            
             String codigo = request.get("codigo");
             String nome = request.get("nome");
             String rg = request.get("rg");
